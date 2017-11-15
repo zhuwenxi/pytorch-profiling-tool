@@ -10,6 +10,8 @@ origin_call = {}
 # record layer time
 layer_time_dict = {}
 
+record = []
+
 # runtime hook all modules recursively, for forward data collecting.
 def hook_modules(module):
 	sub_modules = module.__dict__['_modules']
@@ -35,7 +37,10 @@ def hook_modules(module):
 				result = origin_call[self.__class__](self, *input, **kwargs)
 				stop_time = time.time()
 
-				print("{:90s} forward: {:.4f} ms".format(self, stop_time - start_time))
+				# print("{:90s} forward: {:.4f} ms".format(self, stop_time - start_time))
+				global record
+				record.append((self, start_time, stop_time))
+
 				return result
 
 			# Replace "__call__" with "wrapper_call".
