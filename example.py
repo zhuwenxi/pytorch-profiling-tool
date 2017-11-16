@@ -1,5 +1,5 @@
-import profiling
-from profiling import record
+from profiling import Profiling
+# from profiling import record
 import model.alexnet as alexnet
 
 import torch
@@ -15,39 +15,32 @@ iter = 3
 model = alexnet.alexnet()
 
 #
-# Call PyTorch profiling tool (hook will be added automaticly).
-#
-profiling.profiling(model)
-
-#
-# Run model, we will see the profiling result.
+# Use case 1: use it as context-manager
 #
 
-for i in xrange(iter):
-	# Forward:
-	output = model.forward(Variable(torch.ones(2, 3, 224, 224), requires_grad=True))
+with Profiling(model) as p:
+	for i in xrange(iter):
+		# Forward:
+		output = model.forward(Variable(torch.ones(2, 3, 224, 224), requires_grad=True))
 
-	# Backward:
-	grads = torch.ones(2, 1000)
-	output.backward(grads);
+		# Backward:
+		grads = torch.ones(2, 1000)
+		output.backward(grads);
 
+p.print_result(iter)
 
+#
+# Use case 2: use it directly
+#
 
-# Print record
+# p = Profiling(model).run()
 
-for i in xrange(iter):
-	print("\n================================= Iteration {} =================================".format(i))
+# for i in xrange(iter):
+# 	# Forward:
+# 	output = model.forward(Variable(torch.ones(2, 3, 224, 224), requires_grad=True))
 
-	
-	layer_num = len(record['forward']) / iter 
+# 	# Backward:
+# 	grads = torch.ones(2, 1000)
+# 	output.backward(grads);
 
-	print("\nFORWARD:\n")
-	for j in xrange(layer_num):
-		record_item = record['forward'][i * layer_num + j]
-		print("layer{:3d}:    {:.6f} ms 			({})".format(j, record_item[2] - record_item[1], record_item[0]))
-
-	print("\nBACKWARD:\n")
-	for j in (xrange(layer_num)):
-		record_item = record['backward'][i * layer_num + layer_num - j - 1]
-		print("layer{:3d}:    {:.6f} ms 			({})".format(j, record_item[2] - record_item[1], record_item[0]))
-
+# p.print_result(iter)
