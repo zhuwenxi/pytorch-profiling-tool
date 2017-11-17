@@ -90,7 +90,6 @@ class Profiling(object):
 					that = self
 					def backward_pre_hook(*args):
 						if (this_profiler.profiling_on):
-							# print("pre {}: {}".format(that, id(that)))
 							this_profiler.record['backward'].append((that, time.time()))
 
 					result.grad_fn.register_pre_hook(backward_pre_hook);
@@ -98,7 +97,6 @@ class Profiling(object):
 					if (this_profiler.profiling_on):
 						global record
 						this_profiler.record['forward'].append((self, start_time, stop_time))
-						# print("{:90s} forward: {:.4f} ms".format(self, stop_time - start_time))
 
 
 					return result
