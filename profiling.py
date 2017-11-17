@@ -13,37 +13,53 @@ class Profiling(object):
 		self.record = {'forward':[], 'backward': []}
 		self.profiling_on = True
 		self.origin_call = {}
+		self.hook_done = False
+		self.layer_num = 0
 
 	def __enter__(self):
-		self.profiling_on = True
-		self.run()
+		self.start()
+
 		return self
 
 	def __exit__(self, *args):
-		self.profiling_on = False
+		self.stop()
 
-	def run(self):
-		self.hook_modules(self.model)
+	def __str__(self):
+		ret = ""
+
+		iter = len(self.record['forward']) / self.layer_num
+
+		for i in xrange(iter):
+			ret += "\n================================= Iteration {} =================================\n".format(i + 1)
+	
+			ret += "\nFORWARD TIME:\n\n"
+			for j in xrange(self.layer_num):
+				record_item = self.record['forward'][i * self.layer_num + j]
+				ret += "layer{:3d}:          {:.6f} ms 			({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+
+			ret += "\nBACKWARD TIME:\n\n"
+			for j in (xrange(self.layer_num)):
+				record_item = self.record['backward'][i * self.layer_num + self.layer_num - j - 1]
+				ret += "layer{:3d}:          {:.6f} ms 			({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+
+		return ret
+
+	def start(self):
+		if self.hook_done is False:
+			self.hook_done = True
+			self.hook_modules(self.model)
+
+		self.profiling_on = True
+
 		return self
 
-	def print_result(self, iter):
-		for i in xrange(iter):
-			print("\n================================= Iteration {} =================================".format(i + 1))
+	def stop(self):
+		self.profiling_on = False
 
-	
-			layer_num = len(self.record['forward']) / iter 
-
-			print("\nFORWARD:\n")
-			for j in xrange(layer_num):
-				record_item = self.record['forward'][i * layer_num + j]
-				print("layer{:3d}:    {:.6f} ms 			({})".format(j, record_item[2] - record_item[1], record_item[0]))
-
-			print("\nBACKWARD:\n")
-			for j in (xrange(layer_num)):
-				record_item = self.record['backward'][i * layer_num + layer_num - j - 1]
-				print("layer{:3d}:    {:.6f} ms 			({})".format(j, record_item[2] - record_item[1], record_item[0]))
+		return self
 
 	def hook_modules(self, module):
+
 		this_profiler = self
 
 		sub_modules = module.__dict__['_modules']
@@ -59,6 +75,8 @@ class Profiling(object):
 				#
 				self.hook_modules(sub_module)
 			else:
+
+				self.layer_num += 1
 				#
 				# nn.Module who doesn't have sub nn.Module, hook it.
 				#
