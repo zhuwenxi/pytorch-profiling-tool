@@ -87,21 +87,32 @@ class Profiling(object):
 
                 # Wrapper function to "__call__", with time counter in it.
                 def wrapper_call(self, *input, **kwargs):
-                    start_time = time.time()
+                    try:
+                        if self.__hooked:
+                            start_time = time.time()
+                    except:
+                        pass
                     result = this_profiler.origin_call[self.__class__](self, *input, **kwargs)
-                    stop_time = time.time()
-
-                    that = self
-                    def backward_pre_hook(*args):
-                        if (this_profiler.profiling_on):
-                            this_profiler.record['backward'].append((that, time.time()))
-
-                    result.grad_fn.register_pre_hook(backward_pre_hook);
-
-                    if (this_profiler.profiling_on):
-                        global record
-                        this_profiler.record['forward'].append((self, start_time, stop_time))
-
+                    try:
+                        if self.__hooked:    
+                            stop_time = time.time()
+                    except:
+                        pass
+                        
+                    try:
+                        if self.__hooked:
+                            that = self
+                            def backward_pre_hook(*args):
+                                if (this_profiler.profiling_on):
+                                    this_profiler.record['backward'].append((that, time.time()))
+    
+                            result.grad_fn.register_pre_hook(backward_pre_hook);
+    
+                            if (this_profiler.profiling_on):
+                                global record
+                                this_profiler.record['forward'].append((self, start_time, stop_time))
+                    except:
+                        pass
 
                     return result
 
@@ -109,6 +120,8 @@ class Profiling(object):
                 if sub_module.__class__ not in this_profiler.origin_call:
                     this_profiler.origin_call.update({sub_module.__class__: sub_module.__class__.__call__})
                     sub_module.__class__.__call__ = wrapper_call
+
+                sub_module.__hooked = True
 
                 def backward_post_hook(*args):
                     if (this_profiler.profiling_on):
