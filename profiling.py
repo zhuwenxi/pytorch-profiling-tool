@@ -40,7 +40,11 @@ class Profiling(object):
             ret += "\nBACKWARD TIME:\n\n"
             for j in (xrange(self.layer_num)):
                 record_item = self.record['backward'][i * self.layer_num + self.layer_num - j - 1]
-                ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+                try:
+                    ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+                except:
+                    # Oops, this layer doesn't execute backward post-hooks
+                    pass
 
         return ret
 

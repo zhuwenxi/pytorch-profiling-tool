@@ -12,7 +12,7 @@ iter = 3
 #
 # Create model
 #
-    model = alexnet.alexnet()
+model = alexnet.alexnet()
 
 #
 # Use case 1: use it as context-manager
