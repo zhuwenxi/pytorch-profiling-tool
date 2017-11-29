@@ -40,12 +40,18 @@ class Profiling(object):
         iter = len(self.record['forward']) / self.layer_num
 
         for i in xrange(iter):
+            iter_forward = 0.0
+            iter_backward = 0.0
+
             ret += "\n================================= Iteration {} =================================\n".format(i + 1)
     
             ret += "\nFORWARD TIME:\n\n"
             for j in xrange(self.layer_num):
+
                 record_item = self.record['forward'][i * self.layer_num + j]
                 ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+
+                iter_forward += record_item[2] - record_item[1]
 
                 if j >= len(time_dict['forward']):
                     assert j is len(time_dict['forward'])
@@ -53,10 +59,13 @@ class Profiling(object):
                 else:
                     time_dict['forward'][j] = (time_dict['forward'][j][0], time_dict['forward'][j][1] + record_item[2] - record_item[1])
 
+            ret += "\nTOTAL(forward):          {:.6f} ms          \n".format(iter_forward)
+
             ret += "\nBACKWARD TIME:\n\n"
             for j in (xrange(self.layer_num)):
                 record_item = self.record['backward'][i * self.layer_num + self.layer_num - j - 1]
 
+                iter_backward += record_item[2] - record_item[1]
                 try:
                     ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
 
@@ -69,16 +78,28 @@ class Profiling(object):
                     print("Oops, this layer doesn't execute backward post-hooks")
                     pass
 
+            ret += "\nTOTAL(backward):          {:.6f} ms          \n".format(iter_backward)
+
+
         ret += "\n================================= Average =================================\n"
 
+        average_forward = 0.0
+        average_backward = 0.0
 
         ret += "\nFORWARD TIME:\n\n"
         for i in xrange(self.layer_num):
-            ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(i, time_dict['forward'][i][1] / iter, time_dict['forward'][i][0]) 
-            
+            ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(i + 1, time_dict['forward'][i][1] / iter, time_dict['forward'][i][0]) 
+            average_forward += time_dict['forward'][i][1] / iter
+
+        ret += "\nTOTAL(forward):          {:.6f} ms          \n".format(average_forward)
+
+
         ret += "\nBACKWARD TIME:\n\n"
         for i in xrange(self.layer_num):
-            ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(i, time_dict['backward'][i][1] / iter, time_dict['backward'][i][0]) 
+            ret += "layer{:3d}:          {:.6f} ms          ({})\n".format(i + 1, time_dict['backward'][i][1] / iter, time_dict['backward'][i][0]) 
+            average_backward += time_dict['backward'][i][1] / iter
+
+        ret += "\nTOTAL(backward):          {:.6f} ms          \n".format(average_backward)
 
         return ret
 
