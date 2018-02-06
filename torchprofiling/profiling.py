@@ -5,7 +5,7 @@ from torch.autograd import Function
 import time
 
 class Profiling(object):
-    def __init__(self, model):
+    def __init__(self, model, forward_only=False):
         if isinstance(model, torch.nn.Module) is False:
             print("Not a valid model, please provide a 'nn.Module' instance.")
 
@@ -20,6 +20,8 @@ class Profiling(object):
         self.seen_backward_func = []
         self.prev_backward_func = []
         self.has_release_seen_list = False
+        
+        self.forward_only = True
 
     def __enter__(self):
         self.start()
@@ -62,24 +64,25 @@ class Profiling(object):
 
             ret += "\nTOTAL(forward):          {:.6f} s          \n".format(iter_forward)
 
-            ret += "\nBACKWARD TIME:\n\n"
-            for j in (range(self.layer_num)):
-                record_item = self.record['backward'][i * self.layer_num + self.layer_num - j - 1]
+            if self.forward_only is False:
+                ret += "\nBACKWARD TIME:\n\n"
+                for j in (range(self.layer_num)):
+                    record_item = self.record['backward'][i * self.layer_num + self.layer_num - j - 1]
 
-                iter_backward += record_item[2] - record_item[1]
-                try:
-                    ret += "layer{:3d}:          {:.6f} s          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
+                    iter_backward += record_item[2] - record_item[1]
+                    try:
+                        ret += "layer{:3d}:          {:.6f} s          ({})\n".format(j + 1, record_item[2] - record_item[1], record_item[0])
 
-                    if j >= len(time_dict['backward']):
-                        assert j is len(time_dict['backward'])
-                        time_dict['backward'].append((record_item[0], record_item[2] - record_item[1]))
-                    else:
-                        time_dict['backward'][j] = (time_dict['backward'][j][0], time_dict['backward'][j][1] + record_item[2] - record_item[1])
-                except:
-                    print("Oops, this layer doesn't execute backward post-hooks")
-                    pass
+                        if j >= len(time_dict['backward']):
+                            assert j is len(time_dict['backward'])
+                            time_dict['backward'].append((record_item[0], record_item[2] - record_item[1]))
+                        else:
+                            time_dict['backward'][j] = (time_dict['backward'][j][0], time_dict['backward'][j][1] + record_item[2] - record_item[1])
+                    except:
+                        print("Oops, this layer doesn't execute backward post-hooks")
+                        pass
 
-            ret += "\nTOTAL(backward):          {:.6f} s          \n".format(iter_backward)
+                ret += "\nTOTAL(backward):          {:.6f} s          \n".format(iter_backward)
 
 
         ret += "\n================================= Average =================================\n"
@@ -94,13 +97,13 @@ class Profiling(object):
 
         ret += "\nTOTAL(forward):          {:.6f} s          \n".format(average_forward)
 
+        if self.forward_only is False:
+            ret += "\nBACKWARD TIME:\n\n"
+            for i in range(self.layer_num):
+                ret += "layer{:3d}:          {:.6f} s          ({})\n".format(i + 1, time_dict['backward'][i][1] / iter, time_dict['backward'][i][0]) 
+                average_backward += time_dict['backward'][i][1] / iter
 
-        ret += "\nBACKWARD TIME:\n\n"
-        for i in range(self.layer_num):
-            ret += "layer{:3d}:          {:.6f} s          ({})\n".format(i + 1, time_dict['backward'][i][1] / iter, time_dict['backward'][i][0]) 
-            average_backward += time_dict['backward'][i][1] / iter
-
-        ret += "\nTOTAL(backward):          {:.6f} s          \n".format(average_backward)
+            ret += "\nTOTAL(backward):          {:.6f} s          \n".format(average_backward)
 
         return ret
 
@@ -186,11 +189,25 @@ class Profiling(object):
                                 else:
                                     raise Error("Oops, this record is broken!")
 
+                        
+                        
 
-                        result.grad_fn.register_pre_hook(backward_pre_hook);
-                        # print("=========================== for {} ===========================".format(that))
-                        this_profiler.register_backward_hook(result.grad_fn, backward_pre_hook, backward_post_hook)
-                        # print("=========================== done ===========================")
+                        def hook_result(result):
+                            if isinstance(result, tuple) or isinstance(result, list):
+                                for r in result:
+                                    hook_result(r) 
+                            elif isinstance(result, Variable):
+                                result.grad_fn.register_pre_hook(backward_pre_hook);
+                                # print("=========================== for {} ===========================".format(that))
+                                this_profiler.register_backward_hook(result.grad_fn, backward_pre_hook, backward_post_hook)
+                                # print("=========================== done ===========================")
+                            else:
+                                # raise AssertionError('result (%s) is neither a "tuple" nor a "Variable"!' % type(result))
+                                # print('WARNING: result (%s) is neither a "tuple" nor a "Variable"!' % type(result))
+                                pass
+
+                        if this_profiler.forward_only is False:
+                            hook_result(result)
 
                         if (this_profiler.profiling_on):
                             this_profiler.record['forward'].append((self, start_time, stop_time))
