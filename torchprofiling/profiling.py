@@ -247,3 +247,6 @@ class Profiling(object):
                         pass
                         # print("!!!!!!!!!!!!!!!!!has seen: {}".format(k))
 
+    def dump(self, filename):
+        log_file = open(filename, 'w+')
+        log_file.write(str(self))
